@@ -39,6 +39,10 @@ pub fn encode_raw<'a>(
     step: usize,
 ) -> Result<&'a mut [u8], BufferSizeError> {
     debug_assert_step_size!(step);
+    debug_assert!(
+        buffer.len() >= data.len() * (u8::BITS as usize / step),
+        "Buffer is too small to be encoded with the data"
+    );
     if buffer.len() < (data.len() * step) {
         return Err(BufferSizeError {
             missing: (data.len() * step) - buffer.len(),
@@ -88,14 +92,18 @@ fn decode_byte(buffer: &[u8], step: usize) -> Option<u8> {
 /// let input = "Hello World";
 /// let mut buffer = vec![0; 44];
 /// encode_raw(&mut buffer, &input.as_bytes(), 2)?;
-/// let output = decode_raw(&buffer, 2);
-/// assert_eq!(&input, &str::from_utf8(&output)?);
+/// let output = decode_raw(&buffer, input.len(), 2);
+/// assert_eq!(&input, &str::from_utf8(&output.1)?);
 /// # Ok(())
 /// # }
 /// ```
 pub fn decode_raw<'a>(buffer: &'a [u8], size: usize, step: usize) -> (&'a [u8], Vec<u8>) {
     debug_assert_step_size!(step);
     let index_step = u8::BITS as usize / step;
+    debug_assert!(
+        buffer.len() >= size * index_step,
+        "Buffer is too small to hold the requested amount of data"
+    );
     let mut out = Vec::<u8>::new();
     for index in (0..buffer.len()).step_by(index_step).take(size) {
         if let Some(byte) = decode_byte(&buffer[index..index + index_step], step) {
